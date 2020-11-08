@@ -1,0 +1,20 @@
+{
+  "id": <String/Number> // Identificador del flow
+  "name": <String> // Nom del flow
+  "userId": <String/Number> // Identificador de l'usuari
+  "creationAt": <Date> // Data de creacio
+  "updatedAt": [<Date>] // Data ultima modificacio o Array de modificacions
+  "url": <String> // Url inicial,
+  "schedule": <?> // T'he d'indicar d'alguna manera la periodicitat que s'ha d'executar
+  "extractions": [
+    {
+      "name": <String> // L'usuar seteja el name
+      "id": <String> // Id de l'element del DOM, si es que en te
+      "classes": <Array> // Classes que te l'element del dom, si es que en te
+      "dataset": <Array> // Array d'atributs HTML data-*, si es que en té
+      "xPath": <String> // Ruta xPath de l'element /html/body/div[2]/div/a[1]/
+      "selector": <String> // Ruta DOM de l'element html > body > div:nth-child(2) > div > a:nth-child(1)
+      "format": <String> // Format del contingut (text, numero, date, currency),
+    }
+  ]
+}

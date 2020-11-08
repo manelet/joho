@@ -1,6 +1,6 @@
 {
-  "name": "@bocado/joho",
-  "version": "1.0.0",
+  "name": "joho",
+  "version": "0.0.0-development",
   "description": "🔎  Extract any data you need from any website",
   "main": "index.js",
   "scripts": {
@@ -16,5 +16,8 @@
   "bugs": {
     "url": "https://github.com/manelet/joho/issues"
   },
-  "homepage": "https://github.com/manelet/joho#readme"
+  "homepage": "https://github.com/manelet/joho#readme",
+  "devDependencies": {
+    "lerna": "^3.22.1"
+  }
 }

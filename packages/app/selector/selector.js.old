@@ -1,0 +1,211 @@
+(function () {
+  // const open = XMLHttpRequest.prototype.open;
+  // XMLHttpRequest.prototype.open = function (method, url, ...rest) {
+  //   console.log('intercept', method, url)
+  //   return open.call(this, method, url, ...rest);
+  // };
+
+  let activeStack = []
+
+  const EXCLUDED_TAGS_FOR_TEXT = ['img', 'html', 'head', 'meta', 'title', 'script', 'iframe', 'link', 'body', 'style'];
+
+  const parentElements = (element) => {
+    const parents = [];
+    while (element) {
+      const tagName = element.nodeName.toLowerCase();
+      const cssId = element.id ? `#${element.id}` : '';
+      const cssClass = element.className ? `.${element.className.replace(/\s+/g, '.')}` : '';
+  
+      parents.unshift({
+        element,
+        selector: tagName + cssId + cssClass,
+      });
+  
+      element = element.parentNode !== document ? element.parentNode : false;
+    }
+  
+    return parents;
+  };
+  
+  const nthElement = (element) => {
+    let c = element;
+    let nth = 0;
+    while (c.previousElementSibling !== null) {
+      if (c.nodeName === element.nodeName) {
+        nth++;
+      }
+      c = c.previousElementSibling;
+    }
+  
+    return nth;
+  };
+  
+  const nthSelectorNeeded = (selector, path) => {
+    const querySelector = path === '' ? selector : `${path} > ${selector}`;
+  
+    return document.querySelectorAll(querySelector).length > 1;
+  };
+  
+  const buildPathString = (parents) => {
+    const pathArr = [];
+  
+    parents.forEach((parent) => {
+      if (nthSelectorNeeded(parent.selector, pathArr.join(' > '))) {
+        parent.selector += `:nth-of-type(${nthElement(parent.element)})`;
+      }
+      pathArr.push(parent.selector);
+    });
+  
+    return pathArr.join(' > ');
+  };
+  
+  const getPath = (element) => {
+    if (!(element instanceof HTMLElement)) {
+      throw new Error('element must be of type `HTMLElement`.');
+    }
+  
+    return buildPathString(parentElements(element));
+  };
+
+  function getTextNodesIn(elem, opt_fnFilter) {
+    var textNodes = [];
+    if (elem) {
+      for (var nodes = elem.childNodes, i = nodes.length; i--;) {
+        var node = nodes[i], nodeType = node.nodeType;
+        if (nodeType === 3) {
+          if (!opt_fnFilter || opt_fnFilter(node, elem)) {
+            if (
+              !EXCLUDED_TAGS_FOR_TEXT.includes(node.parentNode.nodeName.toLowerCase()) &&
+              node.data.replace(/^\s+/, '').replace(/\s+$/, '').replace(/(\r\n|\n|\r)/gm,"") !== ''
+            ) {
+              textNodes.push(node);
+            }
+          }
+        }
+        else if (nodeType === 1 || nodeType === 9 || nodeType === 11) {
+          textNodes = textNodes.concat(getTextNodesIn(node, opt_fnFilter));
+        }
+      }
+    }
+    return textNodes;
+  }
+
+  function handleClick (e) {
+    e.preventDefault()
+    e.stopPropagation()
+
+    window.top.postMessage({
+      name: 'crawler-click',
+      type: e.target.nodeName,
+      class: e.target.className || '',
+      id: e.target.id || '',
+      path: getPath(e.target)
+      // content: e.target.innerHTML
+    }, '*')
+  }
+
+  function highlight (el, { px, color }) {
+    const { border, borderRadius, padding, margin, boxSizing, overflow } = getComputedStyle(el)
+    el.dataset.oldStyles = JSON.stringify({ boxSizing, border, borderRadius, padding, margin, overflow })
+    el.style.boxSizing = 'border-box'
+    el.style.border = `${px}px solid ${color}`
+    el.style.borderRadius = '3px'
+    // el.style.padding = `${px}px`
+    // el.style.margin = `-${px}px`
+    el.style.overflow = 'visible'
+  } 
+
+  function handleMouseEnter (el, parent, node) {
+    return function (e) {
+      // console.log('enter el', el);
+
+      if (activeStack.length) {
+        erase([activeStack[0].el, activeStack[0].parent])
+      }
+
+      highlight(el, { px: 2, color: 'red' })
+      highlight(parent, { px: 1, color: 'blue' })
+
+      activeStack.push({el, parent})
+    }
+  }
+
+  function erase (els) {
+    els.forEach(function (el) {
+      if (el && el.dataset && el.dataset.oldStyles) {
+        const { boxSizing, border, borderRadius, padding, margin, overflow } = JSON.parse(el.dataset.oldStyles)
+
+        el.style.border = border
+        el.style.borderRadius = borderRadius
+        // el.style.padding = padding
+        // el.style.margin = margin 
+        el.style.boxSizing =  boxSizing
+        el.style.overflow = overflow
+
+        delete el.dataset.oldStyles 
+      }
+    })
+  }
+
+  function handleMouseLeave (el, parent, node) {
+    return function (e) {
+      // console.log('leave el', e.target, el);
+      erase([el, parent])
+      
+      activeStack.pop()
+
+      if (activeStack.length) {
+        highlight(activeStack[0].el, { px: 2, color: 'red' })
+        highlight(activeStack[0].parent, { px: 4, color: 'blue' })
+      }
+    }
+  }
+
+  function getWrapper (el) {
+    const wrappers = ['div', 'section', 'main', 'article', 'ul']
+
+    if (
+      // wrappers.includes(el.tagName.toLowerCase()) &&
+      el.children.length > 1
+    ) {
+      return el
+    } else {
+      return getWrapper(el.parentElement)
+    }
+  }
+
+  function addTextExtractionListeners () {
+    const nodes = getTextNodesIn(document.body)
+
+    console.log('NODES', nodes);
+
+    nodes.forEach(function (node, i) {
+      const el = node.parentElement
+      const parent = getWrapper(el.parentElement)
+        // ? node.parentElement
+        // : node.parentElement.parentElement
+      
+      el.parentElement.addEventListener('click', handleClick)
+      el.addEventListener('mouseenter', handleMouseEnter(el, parent, node))
+      el.addEventListener('mouseleave', handleMouseLeave(el, parent, node))
+      // node.parentElement.parentElement.addEventListener('click', handleClick)
+      // node.parentElement.parentElement.addEventListener('mouseenter', handleMouseEnter('blue', 4))
+      parent.addEventListener('mouseleave', function(e) {
+        if (activeStack.length) {
+          erase(activeStack.map(({ parent }) => parent))
+        }
+        activeStack = []
+      })      
+    })
+  }
+
+  window.onload = function () {
+    // setTimeout(function () {
+      addTextExtractionListeners()     
+    // }, 5000)
+  }
+
+  window.onpopstate = function (e) {
+    console.log('POPSTATE', e);
+  }
+}());
