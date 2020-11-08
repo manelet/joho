@@ -1,0 +1,20 @@
+{
+  "name": "@bocado/joho",
+  "version": "1.0.0",
+  "description": "🔎  Extract any data you need from any website",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/manelet/joho.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/manelet/joho/issues"
+  },
+  "homepage": "https://github.com/manelet/joho#readme"
+}
